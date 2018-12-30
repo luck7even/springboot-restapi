@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.springbootrestapi.api.meal.mapper.MealMapper">
+	
+	<select id="selectAllMeal" resultType="meal">
+	SELECT B.RSTRNT_NO AS rstrntNo,A.RSTRNT_NM AS rstrntNm, B.MEAL_MENU_NO AS mealMenuNo,B.MEAL_MENU_YMD AS mealMenuYmd, B.MEAL_MENU_GROUP AS mealMenuGroup, B.MEAL_MENU_GBN AS mealMenuGbn,B.MEAL_MENU_CONTENT AS mealMenuContent,B.MEAL_MENU_CRE_YMDT AS mealMenuCreYmdt,B.MEAL_MENU_DEL_YMDT AS mealMenuDelYmdt,B.MEMO AS memo
+	FROM RESTAURANT A, MEAL_MENU B
+	WHERE A.RSTRNT_NO = B.RSTRNT_NO AND B.MEAL_MENU_DEL_YMDT IS NULL
+	ORDER BY B.MEAL_MENU_NO DESC
+    </select>
+
+	<select id="selectMeal" resultType="meal">
+		SELECT B.RSTRNT_NO AS rstrntNo,A.RSTRNT_NM AS rstrntNm, B.MEAL_MENU_NO AS mealMenuNo,B.MEAL_MENU_YMD AS mealMenuYmd, B.MEAL_MENU_GROUP AS mealMenuGroup, B.MEAL_MENU_GBN AS mealMenuGbn,B.MEAL_MENU_CONTENT AS mealMenuContent,B.MEAL_MENU_CRE_YMDT AS mealMenuCreYmdt,B.MEAL_MENU_DEL_YMDT AS mealMenuDelYmdt,B.MEMO AS memo
+		FROM RESTAURANT A, MEAL_MENU B 
+		WHERE A.RSTRNT_NO = B.RSTRNT_NO AND B.MEAL_MENU_DEL_YMDT IS NULL AND B.MEAL_MENU_NO = #{mealMenuNo};
+    </select>
+    
+    <select id ="selectTotalCountByMealMenuGbn" resultType="int">
+    	SELECT count(1) as totalCount
+		FROM MEAL_MENU meal
+		WHERE meal.MEAL_MENU_DEL_YMDT IS NULL 
+		
+		<if test="rstrntNo !=null">
+			 AND meal.RSTRNT_NO = #{rstrntNo}
+		</if>
+		
+		<if test="mealMenuGroup !=null">
+			 AND meal.MEAL_MENU_GROUP = #{mealMenuGroup}
+		</if>
+		
+		<if test="mealMenuGbn !=null">
+			 AND meal.MEAL_MENU_GBN = #{mealMenuGbn}
+		</if>
+		
+    </select>
+    
+   	<select id="selectMealHistoryListByMealMenuGbn" resultType="meal">
+   		
+   		<bind name="endRowNumber" value="pageNumber*rowsPerPage" />
+   		<bind name="startRowNumber" value="(pageNumber*rowsPerPage)-rowsPerPage+1" />
+
+   		<![CDATA[
+			SELECT *
+			FROM(
+			SELECT rowNo,
+			A.RSTRNT_NO AS rstrntNo,
+			B.RSTRNT_NM AS rstrntNm,
+			A.MEAL_MENU_NO AS mealMenuNo,
+			A.MEAL_MENU_YMD AS mealMenuYmd, 
+			A.MEAL_MENU_GROUP AS mealMenuGroup, 
+			A.MEAL_MENU_GBN AS mealMenuGbn,
+			A.MEAL_MENU_CONTENT AS mealMenuContent,
+			A.MEAL_MENU_CRE_YMDT AS mealMenuCreYmdt,
+			A.MEAL_MENU_DEL_YMDT AS mealMenuDelYmdt,
+			A.MEMO AS memo
+			FROM
+			(
+			SELECT @ROWNUM := @ROWNUM + 1 AS rowNo, meal.*
+			FROM MEAL_MENU meal, (SELECT @ROWNUM:=0) R
+			WHERE meal.MEAL_MENU_DEL_YMDT IS NULL
+		]]>
+			
+			<if test="rstrntNo !=null">
+				 AND meal.RSTRNT_NO = #{rstrntNo}
+			</if>
+			
+			<if test="mealMenuGroup !=null">
+				 AND meal.MEAL_MENU_GROUP = #{mealMenuGroup}
+			</if>
+			
+			<if test="mealMenuGbn !=null">
+				 AND meal.MEAL_MENU_GBN = #{mealMenuGbn}
+			</if>
+		<![CDATA[
+			ORDER BY meal.MEAL_MENU_YMD DESC) A, RESTAURANT B
+			WHERE A.RSTRNT_NO = B.RSTRNT_NO 
+			AND rowNo <= #{endRowNumber}
+		     ) t
+			WHERE rowNo >= #{startRowNumber}
+			ORDER BY rowNo ASC
+		]]>
+		
+    </select>
+        
+	<select id="findDuplicatedMeal" resultType="meal"  >
+		SELECT B.RSTRNT_NO AS rstrntNo,A.RSTRNT_NM AS rstrntNm, B.MEAL_MENU_NO AS mealMenuNo,B.MEAL_MENU_YMD AS mealMenuYmd, B.MEAL_MENU_GROUP AS mealMenuGroup, B.MEAL_MENU_GBN AS mealMenuGbn,B.MEAL_MENU_CONTENT AS mealMenuContent,B.MEAL_MENU_CRE_YMDT AS mealMenuCreYmdt,B.MEAL_MENU_DEL_YMDT AS mealMenuDelYmdt,B.MEMO AS memo FROM RESTAURANT A, MEAL_MENU B
+		WHERE 
+		<foreach separator=" or " collection="list" item="element">
+			(A.RSTRNT_NO = B.RSTRNT_NO AND B.RSTRNT_NO = #{element.rstrntNo} AND B.MEAL_MENU_YMD = #{element.mealMenuYmd} AND B.MEAL_MENU_GROUP = #{element.mealMenuGroup} AND B.MEAL_MENU_GBN = #{element.mealMenuGbn})
+		</foreach>
+    </select>
+    
+	<insert id="insertMeal" parameterType="meal"  >
+		INSERT INTO MEAL_MENU(RSTRNT_NO,MEAL_MENU_NO,MEAL_MENU_YMD,MEAL_MENU_GROUP,MEAL_MENU_GBN,MEAL_MENU_CONTENT,MEAL_MENU_CRE_YMDT,MEAL_MENU_DEL_YMDT,MEMO)
+		VALUES
+		<foreach separator="," collection="list" item="element">
+			(#{element.rstrntNo},(SELECT LPAD(LPAD(CAST(SUBSTR(MEAL_MENU_NO,5,12) AS INTEGER)+1,8,0),12,'MEAL') FROM MEAL_MENU ALIAS_FOR_SUBQUERY ORDER BY MEAL_MENU_NO DESC limit 1),#{element.mealMenuYmd},#{element.mealMenuGroup},#{element.mealMenuGbn},#{element.mealMenuContent},NOW(),null,#{element.memo})
+		</foreach>
+    </insert>
+    
+   	<update id="updateMeal">
+		UPDATE MEAL_MENU SET
+			RSTRNT_NO = #{rstrntNo},
+			MEAL_MENU_YMD = #{mealMenuYmd},
+			MEAL_MENU_GROUP = #{mealMenuGroup},
+			MEAL_MENU_GBN = #{mealMenuGbn},
+			MEAL_MENU_CONTENT = #{mealMenuContent},
+			MEMO = #{memo}
+		WHERE MEAL_MENU_NO = #{mealMenuNo};
+    </update>
+    
+   	<update id="deleteMeal">
+		UPDATE MEAL_MENU SET
+			MEAL_MENU_DEL_YMDT = NOW()
+		WHERE MEAL_MENU_NO = #{mealMenuNo};
+    </update>
+    
+    <select id="GetTodayMeal" resultType="meal">
+		SELECT B.RSTRNT_NO AS rstrntNo,A.RSTRNT_NM AS rstrntNm, B.MEAL_MENU_NO AS mealMenuNo,B.MEAL_MENU_YMD AS mealMenuYmd, B.MEAL_MENU_GROUP AS mealMenuGroup, B.MEAL_MENU_GBN AS mealMenuGbn,B.MEAL_MENU_CONTENT AS mealMenuContent,B.MEAL_MENU_CRE_YMDT AS mealMenuCreYmdt,B.MEAL_MENU_DEL_YMDT AS mealMenuDelYmdt,B.MEMO AS memo 
+		FROM RESTAURANT A, MEAL_MENU B 
+		WHERE B.MEAL_MENU_YMD = CURDATE() AND B.MEAL_MENU_DEL_YMDT IS NULL AND A.RSTRNT_NO = B.RSTRNT_NO
+		ORDER BY (CASE B.RSTRNT_NO WHEN 'DTC001' THEN 1 
+		                        	WHEN 'DTC002' THEN 2
+											ELSE 3 END) ASC, 
+					(CASE B.MEAL_MENU_GROUP WHEN '아침' THEN 1
+					                      	WHEN '점심' THEN 2 
+													WHEN '저녁' THEN 3
+													ELSE 4 END) ASC,
+					(CASE B.MEAL_MENU_GBN	WHEN 'Korean' THEN 1
+             									WHEN 'Noodle' THEN 2 
+             									WHEN 'Inter-national' THEN 3
+             									WHEN '조식' THEN 4
+             									WHEN '중식' THEN 5
+             									WHEN '석식' THEN 6
+             									ELSE 7 END) ASC
+    </select>
+    
+    <select id="GetWeekMeal" resultType="meal">
+	SELECT B.RSTRNT_NO AS rstrntNo,A.RSTRNT_NM AS rstrntNm, B.MEAL_MENU_NO AS mealMenuNo,B.MEAL_MENU_YMD AS mealMenuYmd, B.MEAL_MENU_GROUP AS mealMenuGroup, B.MEAL_MENU_GBN AS mealMenuGbn,B.MEAL_MENU_CONTENT AS mealMenuContent,B.MEAL_MENU_CRE_YMDT AS mealMenuCreYmdt,B.MEAL_MENU_DEL_YMDT AS mealMenuDelYmdt,B.MEMO AS memo 
+	FROM RESTAURANT A, MEAL_MENU B
+	WHERE	B.MEAL_MENU_YMD BETWEEN (SELECT ADDDATE( CURDATE(), - WEEKDAY(CURDATE())) AS MONDAY) AND 
+	(SELECT ADDDATE( CURDATE(), - WEEKDAY(CURDATE()) + 4 ) AS FRIDAY) AND B.MEAL_MENU_DEL_YMDT IS NULL AND A.RSTRNT_NO = B.RSTRNT_NO
+			ORDER BY (CASE B.RSTRNT_NO WHEN 'DTC001' THEN 1 
+			                        	WHEN 'DTC002' THEN 2
+												ELSE 3 END) ASC, 
+					   B.MEAL_MENU_YMD ASC,
+						(CASE B.MEAL_MENU_GROUP WHEN '아침' THEN 1
+						                      	WHEN '점심' THEN 2 
+														WHEN '저녁' THEN 3
+														ELSE 4 END) ASC,
+						(CASE B.MEAL_MENU_GBN	WHEN 'Korean' THEN 1
+	             									WHEN 'Noodle' THEN 2 
+	             									WHEN 'Inter-national' THEN 3
+	             									WHEN '조식' THEN 4
+	             									WHEN '중식' THEN 5
+	             									WHEN '석식' THEN 6
+	             									ELSE 7 END) ASC;
+    </select>
+
+</mapper>

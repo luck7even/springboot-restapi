@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.springbootrestapi.api.restaurant.mapper.RestaurantMapper">
+	
+	<select id="selectAllRestaurant" resultType="restaurant">
+		select RSTRNT_NO AS rstrntNo ,RSTRNT_NM AS rstrntNm,CRE_YMDT AS creYmdt,DEL_YMDT AS delYmdt,MEMO AS memo from RESTAURANT;
+    </select>
+
+	<select id="selectRestaurant" resultType="restaurant">
+		select RSTRNT_NO AS rstrntNo ,RSTRNT_NM AS rstrntNm,CRE_YMDT AS creYmdt,DEL_YMDT AS delYmdt,MEMO AS memo from RESTAURANT where RSTRNT_NO = #{rstrntNo};
+    </select>
+    
+	<insert id="insertRestaurant">
+		INSERT INTO RESTAURANT(RSTRNT_NO,RSTRNT_NM,CRE_YMDT,DEL_YMDT,MEMO)
+		SELECT LPAD(LPAD(CAST(SUBSTR(MAX(RSTRNT_NO),4,6) AS INTEGER)+1,3,0),6,'DTC'), #{rstrntNm}, NOW(),null,#{memo} FROM RESTAURANT;
+    </insert>
+    
+   	<update id="updateRestaurant">
+		UPDATE RESTAURANT SET
+			RSTRNT_NM = #{rstrntNm},
+			MEMO = #{memo}
+		WHERE RSTRNT_NO = #{rstrntNo};
+    </update>
+    
+   	<update id="deleteRestaurant">
+		UPDATE RESTAURANT SET
+			DEL_YMDT = NOW()
+		WHERE RSTRNT_NO = #{rstrntNo};
+    </update>
+
+</mapper>

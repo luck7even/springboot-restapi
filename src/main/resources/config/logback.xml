@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+   
+    <include resource="config/log/console.xml" />
+    <include resource="config/log/file.xml" />
+    
+    <logger name="com.zaxxer.hikari">
+	    <level value="error"/>
+	</logger>
+
+    <root level="DEBUG">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="dailyRollingFileAppender"/>
+    </root>
+    
+</configuration> 

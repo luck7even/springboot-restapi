@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.springbootrestapi.api.bot.mapper.BotMapper">
+	
+	<select id="selectAllBot" resultType="bot">
+		select BOT_USER_NO AS botUserNo,BOT_NO AS botNo,BOT_EMAIL AS botEmail,BOT_CRE_YMDT AS botCreYmdt,BOT_DEL_YMDT AS botDelYmdt,MEMO AS memo 
+		from BOT_USER;
+    </select>
+
+	<select id="selectBot" resultType="bot">
+		select BOT_USER_NO AS botUserNo,BOT_NO AS botNo,BOT_EMAIL AS botEmail,BOT_CRE_YMDT AS botCreYmdt,BOT_DEL_YMDT AS botDelYmdt,MEMO AS memo 
+		from BOT_USER 
+		where BOT_USER_NO = #{botUserNo};
+    </select>
+    
+    <select id ="selectBotUserTotalCount" resultType="int">
+    	SELECT count(1) as totalCount
+		FROM BOT_USER user
+		WHERE user.BOT_DEL_YMDT IS NULL 
+    </select>
+    
+    <select id ="selectBotUserHistoryList" resultType="bot">
+    	<bind name="endRowNumber" value="pageNumber*rowsPerPage" />
+   		<bind name="startRowNumber" value="(pageNumber*rowsPerPage)-rowsPerPage+1" />
+   		
+   		<![CDATA[
+			SELECT *	FROM(
+				SELECT rowNo,
+				user.BOT_USER_NO AS botUserNo,
+				user.BOT_NO AS botNo,
+				user.BOT_EMAIL AS botEmail,
+				user.BOT_CRE_YMDT AS botCreYmdt,
+				user.BOT_DEL_YMDT AS botDelYmdt,
+				user.MEMO AS memo
+			FROM
+			(
+			SELECT @ROWNUM := @ROWNUM + 1 AS rowNo, user.*
+			FROM BOT_USER user, (SELECT @ROWNUM:=0) R
+			WHERE user.BOT_DEL_YMDT IS NULL
+			ORDER BY user.BOT_USER_NO ASC
+			) user
+			WHERE rowNo <= #{endRowNumber}
+		     ) t
+			WHERE rowNo >= #{startRowNumber}
+			ORDER BY rowNo ASC
+		]]>
+    	
+    </select>
+    
+    <select id ="selectBotFeedbackTotalCount" resultType="int">
+    	SELECT count(1) as totalCount FROM BOT_FEEDBACK
+    </select>
+    
+    <select id ="selectBotFeedbackHistoryList" resultType="botfeedback">
+    	<bind name="endRowNumber" value="pageNumber*rowsPerPage" />
+   		<bind name="startRowNumber" value="(pageNumber*rowsPerPage)-rowsPerPage+1" />
+   		
+   		<![CDATA[
+			SELECT *	FROM(
+				SELECT rowNo,
+				feedback.BOT_NO AS botNo,
+				feedback.BOT_EMAIL AS botEmail,
+				feedback.BOT_CONTENTS AS botContents,
+				feedback.BOT_TYPING_YMDT AS botTypingYmdt
+			FROM
+			(
+			SELECT @ROWNUM := @ROWNUM + 1 AS rowNo, feedback.*
+			FROM BOT_FEEDBACK feedback, (SELECT @ROWNUM:=0) R
+			ORDER BY feedback.BOT_TYPING_YMDT ASC
+			) feedback
+			WHERE rowNo <= #{endRowNumber}
+		     ) t
+			WHERE rowNo >= #{startRowNumber}
+			ORDER BY rowNo ASC
+		]]>
+    	
+    </select>
+    
+    
+	<insert id="insertBot">
+		INSERT INTO BOT_USER(BOT_USER_NO,BOT_NO,BOT_EMAIL,BOT_CRE_YMDT,BOT_DEL_YMDT,MEMO)
+		SELECT LPAD(LPAD(CAST(SUBSTR(MAX(BOT_USER_NO),5,10) AS INTEGER)+1,6,0),10,'USER'),#{botNo}, #{botEmail},NOW(),null,#{memo} FROM BOT_USER;
+    </insert>
+    
+   	<update id="updateBot">
+		UPDATE BOT_USER SET
+			BOT_NO = #{botNo},
+			BOT_EMAIL = #{botEmail},
+			MEMO = #{memo}
+		WHERE BOT_USER_NO = #{botUserNo}
+    </update>
+    
+   	<update id="deleteBot">
+		UPDATE BOT_USER SET
+			BOT_DEL_YMDT = NOW()
+		WHERE BOT_USER_NO = #{botUserNo};
+    </update>
+    
+    <insert id="inviteBotUser">
+		INSERT INTO BOT_USER(BOT_USER_NO,BOT_NO,BOT_EMAIL,BOT_CRE_YMDT,BOT_DEL_YMDT,MEMO)
+		SELECT LPAD(LPAD(CAST(SUBSTR(MAX(BOT_USER_NO),5,10) AS INTEGER)+1,6,0),10,'USER'),#{botNo}, #{botEmail},NOW(),null,null FROM BOT_USER;
+    </insert>
+    
+    <update id="cancelBotUser">
+		UPDATE BOT_USER SET
+			BOT_DEL_YMDT = NOW()
+		WHERE BOT_NO = #{botNo} AND BOT_EMAIL = #{botEmail} AND BOT_DEL_YMDT IS NULL
+    </update>
+    
+    <select id="findByBotUserList" resultType="bot">
+		select BOT_USER_NO AS botUserNo,BOT_NO AS botNo,BOT_EMAIL AS botEmail,BOT_CRE_YMDT AS botCreYmdt,BOT_DEL_YMDT AS botDelYmdt,MEMO AS memo from BOT_USER
+		where BOT_NO = #{botNo} AND BOT_DEL_YMDT IS NULL
+    </select>
+    
+    <select id="findByBotUser" resultType="bot">
+		select BOT_USER_NO AS botUserNo,BOT_NO AS botNo,BOT_EMAIL AS botEmail,BOT_CRE_YMDT AS botCreYmdt,BOT_DEL_YMDT AS botDelYmdt,MEMO AS memo from BOT_USER
+		where BOT_NO = #{botNo} AND BOT_EMAIL = #{botEmail} AND BOT_DEL_YMDT IS NULL
+    </select>
+    
+    <insert id="acceptBotFeedback">
+		INSERT INTO BOT_FEEDBACK(BOT_NO,BOT_EMAIL,BOT_CONTENTS,BOT_TYPING_YMDT)
+		VALUES (#{botNo},#{botEmail},null,NOW())
+	</insert>
+	
+  	<select id="findByBotFeedback" resultType="botfeedback">
+		select BOT_NO AS botNo,BOT_EMAIL AS botEmail,BOT_CONTENTS AS botContents,BOT_TYPING_YMDT AS botTypingYmdt from BOT_FEEDBACK
+		where BOT_NO = #{botNo} AND BOT_EMAIL = #{botEmail} AND BOT_CONTENTS IS NULL
+    </select>
+    
+     <update id="confirmBotFeedback">
+		UPDATE BOT_FEEDBACK SET
+			BOT_CONTENTS = #{botContents}
+		WHERE BOT_NO = #{botNo} AND BOT_EMAIL = #{botEmail} AND BOT_CONTENTS IS NULL
+    </update>
+    
+	<insert id="typingBotLog">
+		INSERT INTO BOT_LOG(BOT_NO,BOT_EMAIL,BOT_CONTENTS,BOT_TYPING_YMDT)
+		VALUES (#{botNo},#{botEmail},#{botContents},NOW())
+	</insert>
+	
+
+</mapper>
